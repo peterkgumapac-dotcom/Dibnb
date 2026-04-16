@@ -154,6 +154,30 @@ a:hover { text-decoration: underline; }
 /* Main */
 .main { padding: 28px 36px 60px; min-width: 0; }
 
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--lev-line);
+}
+.tab {
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--lev-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: none;
+}
+.tab:hover { color: var(--lev-green); }
+.tab.active {
+  color: var(--lev-green);
+  border-bottom-color: var(--lev-green);
+}
+
 .page-header {
   display: flex;
   align-items: flex-end;

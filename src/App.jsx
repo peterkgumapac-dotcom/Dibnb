@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Sidebar from './components/Sidebar.jsx';
 import StatementView from './components/StatementView.jsx';
+import RevenueView from './components/RevenueView.jsx';
 import { api } from './lib/api.js';
 import { currentMonthYYYYMM, monthRange } from './lib/format.js';
 
@@ -14,6 +15,7 @@ export default function App() {
   const [error, setError] = useState(null);
   const [statement, setStatement] = useState(null);
   const [health, setHealth] = useState(null);
+  const [tab, setTab] = useState('statement');
 
   const loadOwners = () => {
     setOwnersLoading(true);
@@ -86,17 +88,35 @@ export default function App() {
       />
 
       <main className="main">
+        {statement && (
+          <nav className="tabs" role="tablist">
+            <button
+              role="tab"
+              className={`tab ${tab === 'statement' ? 'active' : ''}`}
+              onClick={() => setTab('statement')}
+            >
+              Owner Statement
+            </button>
+            <button
+              role="tab"
+              className={`tab ${tab === 'revenue' ? 'active' : ''}`}
+              onClick={() => setTab('revenue')}
+            >
+              Revenue
+            </button>
+          </nav>
+        )}
+
         {error && <div className="error">⚠ {error}</div>}
 
-        {!statement && !loading && (
-          <Welcome />
-        )}
+        {!statement && !loading && <Welcome />}
         {loading && (
           <div className="empty">
             <span className="spinner" /> Loading owner statement…
           </div>
         )}
-        {statement && <StatementView data={statement} />}
+        {statement && tab === 'statement' && <StatementView data={statement} />}
+        {statement && tab === 'revenue' && <RevenueView data={statement} />}
       </main>
     </div>
   );
@@ -135,6 +155,10 @@ function Welcome() {
             booking still carrying cleaning, etc.
           </li>
           <li>Statement-level findings (negative payout, terminated client, etc.) at the top.</li>
+          <li>
+            A <strong>Revenue</strong> tab with ADR, RevPAR, occupancy, channel mix &amp; margin,
+            per-listing performance, and pricing anomalies — derived from the same Guesty data.
+          </li>
         </ul>
       </div>
     </div>
