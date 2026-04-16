@@ -255,18 +255,113 @@ table.os th {
   font-weight: 600;
 }
 table.os td.num, table.os th.num { text-align: right; font-variant-numeric: tabular-nums; }
-table.os tr.has-critical td { background: rgba(255, 235, 233, 0.40); }
-table.os tr.has-warning  td { background: rgba(255, 246, 215, 0.40); }
+/* Failing row styling — bold bg + left accent bar + slightly heavier font */
+table.os tr.row-critical td { background: #fce9e7; }
+table.os tr.row-critical td:first-child {
+  box-shadow: inset 4px 0 0 var(--sev-critical);
+}
+table.os tr.row-warning td  { background: #fff4d3; }
+table.os tr.row-warning td:first-child {
+  box-shadow: inset 4px 0 0 #d6a000;
+}
+table.os tr.row-info td     { background: #e1edf7; }
+table.os tr.row-info td:first-child {
+  box-shadow: inset 4px 0 0 var(--sev-info);
+}
+table.os tr.row-pass td { background: white; }
+table.os tr.row-pass:hover td { background: #fbfaf4; }
+
+/* The explanatory strip under a failing reservation row */
+table.os tr.finding-strip td {
+  padding: 8px 14px 12px 52px;
+  background: inherit;
+  border-bottom: 1px solid var(--lev-line);
+  font-size: 12.5px;
+}
+table.os tr.finding-critical td { background: #fce9e7; }
+table.os tr.finding-warning td  { background: #fff4d3; }
+table.os tr.finding-info td     { background: #e1edf7; }
+.finding-line { padding: 3px 0; }
+.finding-line.critical strong { color: var(--sev-critical); }
+.finding-line.warning strong  { color: var(--sev-warning); }
+.finding-line.info strong     { color: var(--sev-info); }
+
+/* Line item rows — indented, muted, tighter */
 table.os tr.line-item td { background: #fafaf6; color: var(--lev-muted); font-size: 12.5px; }
-table.os tr.line-item td:first-child { padding-left: 36px; }
+table.os tr.line-item td:nth-child(2) { padding-left: 28px; }
+
+/* Disclosure triangle in the first column */
+td.expander { width: 28px; padding: 0 4px 0 8px !important; text-align: center; }
+button.disclosure {
+  color: var(--lev-green);
+  font-size: 12px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+button.disclosure:hover { background: var(--lev-green-50); }
+
+/* Preset row in sidebar */
+.preset-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.preset {
+  background: rgba(246, 239, 223, 0.08);
+  border: 1px solid rgba(246, 239, 223, 0.25);
+  color: var(--lev-cream);
+  font-size: 12px;
+  padding: 7px 8px;
+  border-radius: 6px;
+  text-align: left;
+}
+.preset:hover { background: rgba(246, 239, 223, 0.15); }
+.preset.active {
+  background: var(--lev-pink);
+  color: var(--lev-green);
+  border-color: var(--lev-pink);
+  font-weight: 600;
+}
+.field-hint { font-size: 11px; color: rgba(246, 239, 223, 0.55); margin-top: 2px; }
+
+/* Toggle in the audit bar */
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--lev-green);
+  cursor: pointer;
+  user-select: none;
+}
+.toggle input { accent-color: var(--lev-green); }
+
+/* Statement-level findings list — small left accent per row */
+.findings-panel .finding-row {
+  list-style: none;
+  padding: 6px 8px;
+  margin: 4px 0;
+  border-left: 3px solid transparent;
+  border-radius: 4px;
+}
+.findings-panel .finding-row.critical { border-left-color: var(--sev-critical); background: #fce9e7; }
+.findings-panel .finding-row.warning  { border-left-color: #d6a000; background: #fff4d3; }
+.findings-panel .finding-row.info     { border-left-color: var(--sev-info); background: #e1edf7; }
 
 .badges { display: inline-flex; gap: 4px; flex-wrap: wrap; }
 .badge {
   display: inline-flex; align-items: center; gap: 4px;
-  padding: 2px 7px; border-radius: 6px;
-  font-size: 11px; font-weight: 600; letter-spacing: 0.02em;
+  padding: 3px 8px; border-radius: 6px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
   cursor: help;
+  border: 1px solid transparent;
 }
+.badge.critical { border-color: #f1b2ae; }
+.badge.warning  { border-color: #e5c36a; }
+.badge.info     { border-color: #a6c2dc; }
 .badge.critical { background: var(--sev-critical-bg); color: var(--sev-critical); }
 .badge.warning  { background: var(--sev-warning-bg);  color: var(--sev-warning); }
 .badge.info     { background: var(--sev-info-bg);     color: var(--sev-info); }

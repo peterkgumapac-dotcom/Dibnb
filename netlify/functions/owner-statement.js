@@ -58,12 +58,57 @@ export default async (req) => {
       expenses = [];
     }
 
+    // Pull Guesty's published owner statement(s) for the period — best-effort.
+    // Endpoint shape varies by account; try the standard one then fall back silently.
+    let publishedStatement = null;
+    const tryQueries = [
+      {
+        path: '/owner-statements',
+        query: {
+          'filters[owner]': ownerId,
+          'filters[period][$gte]': from,
+          'filters[period][$lte]': to,
+          limit: 5,
+        },
+      },
+      {
+        path: '/owner-statements',
+        query: {
+          'filters[ownerId]': ownerId,
+          'filters[from]': from,
+          'filters[to]': to,
+          limit: 5,
+        },
+      },
+      {
+        path: `/owners/${ownerId}/statements`,
+        query: { from, to, limit: 5 },
+      },
+    ];
+    for (const t of tryQueries) {
+      try {
+        const resp = await guestyFetch(t.path, { query: t.query });
+        const list = Array.isArray(resp?.results)
+          ? resp.results
+          : Array.isArray(resp)
+          ? resp
+          : null;
+        if (list && list.length) {
+          publishedStatement = list[0];
+          break;
+        }
+      } catch {
+        // try next shape
+      }
+    }
+
     return jsonResponse(200, {
       period: { from, to },
       owner,
       listings,
       reservations,
       expenses,
+      publishedStatement,
     });
   } catch (err) {
     return errorResponse(err);

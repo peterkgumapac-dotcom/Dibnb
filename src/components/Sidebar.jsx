@@ -1,5 +1,5 @@
 import React from 'react';
-import { currentMonthYYYYMM } from '../lib/format.js';
+import { currentMonthYYYYMM, offsetMonthYYYYMM, labelForYYYYMM } from '../lib/format.js';
 
 export default function Sidebar({
   owners,
@@ -12,6 +12,13 @@ export default function Sidebar({
   health,
   ownersError,
 }) {
+  const presets = [
+    { key: 'thisMonth', label: 'This month', value: currentMonthYYYYMM() },
+    { key: 'lastMonth', label: 'Last month', value: offsetMonthYYYYMM(-1) },
+    { key: 'twoBack', label: offsetMonthLabel(-2), value: offsetMonthYYYYMM(-2) },
+    { key: 'threeBack', label: offsetMonthLabel(-3), value: offsetMonthYYYYMM(-3) },
+  ];
+
   return (
     <aside className="sidebar">
       <div className="brand">
@@ -20,8 +27,19 @@ export default function Sidebar({
       </div>
 
       <h3>Period</h3>
+      <div className="preset-row">
+        {presets.map((p) => (
+          <button
+            key={p.key}
+            className={`preset ${period === p.value ? 'active' : ''}`}
+            onClick={() => setPeriod(p.value)}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
       <div className="field">
-        <label htmlFor="period">Statement month</label>
+        <label htmlFor="period">Or pick a month</label>
         <input
           id="period"
           type="month"
@@ -29,6 +47,7 @@ export default function Sidebar({
           max={currentMonthYYYYMM()}
           onChange={(e) => setPeriod(e.target.value)}
         />
+        <div className="field-hint">Showing {labelForYYYYMM(period)}</div>
       </div>
 
       <h3>Owner</h3>
@@ -72,4 +91,10 @@ export default function Sidebar({
       </div>
     </aside>
   );
+}
+
+function offsetMonthLabel(offset) {
+  const yyyyMm = offsetMonthYYYYMM(offset);
+  const [, m] = yyyyMm.split('-');
+  return new Date(2000, Number(m) - 1, 1).toLocaleDateString('en-GB', { month: 'short' });
 }
