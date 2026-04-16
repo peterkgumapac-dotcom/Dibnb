@@ -78,6 +78,18 @@ export default function StatementView({ data }) {
             {period.from} → {period.to} · {listings.length} propert
             {listings.length === 1 ? 'y' : 'ies'} · {reservations.length} reservation
             {reservations.length === 1 ? '' : 's'} · <span className="tag">{currency}</span>
+            {listings.length > 0 && (
+              <div className="listings-chips" style={{ marginTop: 6 }}>
+                {listings.slice(0, 8).map((l) => (
+                  <span key={l._id || l.id} className="chip neutral" title={l.title}>
+                    {l.nickname || l.title}
+                  </span>
+                ))}
+                {listings.length > 8 && (
+                  <span className="chip neutral">+{listings.length - 8} more</span>
+                )}
+              </div>
+            )}
             {publishedStatement && (
               <>
                 {' · '}

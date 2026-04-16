@@ -1,16 +1,51 @@
 // Shared helpers for Guesty Open API Netlify Functions.
-// Caches the OAuth token in module scope so warm invocations reuse it.
+//
+// Caches the OAuth token on `globalThis` so every warm invocation of every
+// function on the same instance reuses it, and adds retry-with-backoff on
+// 429 responses — Guesty's /oauth2/token endpoint is strict.
 
 const TOKEN_URL = process.env.GUESTY_TOKEN_URL || 'https://open-api.guesty.com/oauth2/token';
 const API_BASE = process.env.GUESTY_API_BASE || 'https://open-api.guesty.com/v1';
 
-let cached = { token: null, expiresAt: 0 };
+const CACHE_KEY = '__lev_guesty_cache__';
+globalThis[CACHE_KEY] = globalThis[CACHE_KEY] || {
+  token: null,
+  expiresAt: 0,
+  inflight: null,
+};
+
+const cache = globalThis[CACHE_KEY];
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function fetchWithRetry(url, options, { tries = 4, baseDelay = 400 } = {}) {
+  let lastErr;
+  for (let i = 0; i < tries; i++) {
+    try {
+      const res = await fetch(url, options);
+      if (res.status === 429 || res.status === 503) {
+        // Respect Retry-After if present; otherwise exponential backoff.
+        const ra = Number(res.headers.get('retry-after'));
+        const delay = Number.isFinite(ra) && ra > 0 ? ra * 1000 : baseDelay * 2 ** i;
+        if (i === tries - 1) return res; // out of retries; return the 429
+        await sleep(delay);
+        continue;
+      }
+      return res;
+    } catch (err) {
+      lastErr = err;
+      await sleep(baseDelay * 2 ** i);
+    }
+  }
+  throw lastErr || new Error('fetchWithRetry exhausted');
+}
 
 export async function getAccessToken() {
   const now = Date.now();
-  if (cached.token && cached.expiresAt - 60_000 > now) {
-    return cached.token;
-  }
+  if (cache.token && cache.expiresAt - 60_000 > now) return cache.token;
+
+  // Coalesce concurrent token refreshes into a single in-flight request.
+  if (cache.inflight) return cache.inflight;
 
   const clientId = process.env.GUESTY_CLIENT_ID;
   const clientSecret = process.env.GUESTY_CLIENT_SECRET;
@@ -18,31 +53,43 @@ export async function getAccessToken() {
     throw new Error('Missing GUESTY_CLIENT_ID / GUESTY_CLIENT_SECRET env vars');
   }
 
-  const body = new URLSearchParams({
-    grant_type: 'client_credentials',
-    scope: 'open-api',
-    client_id: clientId,
-    client_secret: clientSecret,
-  });
+  cache.inflight = (async () => {
+    const body = new URLSearchParams({
+      grant_type: 'client_credentials',
+      scope: 'open-api',
+      client_id: clientId,
+      client_secret: clientSecret,
+    });
+    const res = await fetchWithRetry(
+      TOKEN_URL,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/x-www-form-urlencoded',
+          accept: 'application/json',
+        },
+        body,
+      },
+      { tries: 5, baseDelay: 600 }
+    );
+    if (!res.ok) {
+      const text = await res.text();
+      const err = new Error(`Guesty token error ${res.status}: ${text}`);
+      err.status = res.status;
+      throw err;
+    }
+    const json = await res.json();
+    const expiresInMs = (json.expires_in || 3600) * 1000;
+    cache.token = json.access_token;
+    cache.expiresAt = Date.now() + expiresInMs;
+    return cache.token;
+  })();
 
-  const res = await fetch(TOKEN_URL, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/x-www-form-urlencoded',
-      accept: 'application/json',
-    },
-    body,
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Guesty token error ${res.status}: ${text}`);
+  try {
+    return await cache.inflight;
+  } finally {
+    cache.inflight = null;
   }
-
-  const json = await res.json();
-  const expiresInMs = (json.expires_in || 3600) * 1000;
-  cached = { token: json.access_token, expiresAt: now + expiresInMs };
-  return cached.token;
 }
 
 export async function guestyFetch(path, { query, method = 'GET', body } = {}) {
@@ -54,7 +101,7 @@ export async function guestyFetch(path, { query, method = 'GET', body } = {}) {
       url.searchParams.set(k, String(v));
     }
   }
-  const res = await fetch(url.toString(), {
+  const res = await fetchWithRetry(url.toString(), {
     method,
     headers: {
       authorization: `Bearer ${token}`,

@@ -58,48 +58,26 @@ export default async (req) => {
       expenses = [];
     }
 
-    // Pull Guesty's published owner statement(s) for the period — best-effort.
-    // Endpoint shape varies by account; try the standard one then fall back silently.
+    // Best-effort: single call to Guesty's published owner statements.
+    // Kept to one request so we don't hammer the API under rate limits.
     let publishedStatement = null;
-    const tryQueries = [
-      {
-        path: '/owner-statements',
+    try {
+      const resp = await guestyFetch('/owner-statements', {
         query: {
           'filters[owner]': ownerId,
           'filters[period][$gte]': from,
           'filters[period][$lte]': to,
           limit: 5,
         },
-      },
-      {
-        path: '/owner-statements',
-        query: {
-          'filters[ownerId]': ownerId,
-          'filters[from]': from,
-          'filters[to]': to,
-          limit: 5,
-        },
-      },
-      {
-        path: `/owners/${ownerId}/statements`,
-        query: { from, to, limit: 5 },
-      },
-    ];
-    for (const t of tryQueries) {
-      try {
-        const resp = await guestyFetch(t.path, { query: t.query });
-        const list = Array.isArray(resp?.results)
-          ? resp.results
-          : Array.isArray(resp)
-          ? resp
-          : null;
-        if (list && list.length) {
-          publishedStatement = list[0];
-          break;
-        }
-      } catch {
-        // try next shape
-      }
+      });
+      const list = Array.isArray(resp?.results)
+        ? resp.results
+        : Array.isArray(resp)
+        ? resp
+        : [];
+      if (list.length) publishedStatement = list[0];
+    } catch {
+      publishedStatement = null;
     }
 
     return jsonResponse(200, {

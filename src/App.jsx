@@ -21,12 +21,24 @@ export default function App() {
       .catch((e) => setHealth({ ok: false, error: e.message }));
 
     api
-      .owners({ limit: 200 })
-      .then((res) => {
-        const list = Array.isArray(res?.results) ? res.results : Array.isArray(res) ? res : [];
-        setOwners(list);
-      })
-      .catch((e) => setOwnersError(e.message));
+      .ownersWithListings()
+      .then((res) => setOwners(res.owners || []))
+      .catch((e) => {
+        // Fallback to the bare /owners list if the combined endpoint is unreachable.
+        setOwnersError(e.message);
+        api
+          .owners({ limit: 200 })
+          .then((res) => {
+            const list = Array.isArray(res?.results)
+              ? res.results
+              : Array.isArray(res)
+              ? res
+              : [];
+            setOwners(list);
+            setOwnersError(null);
+          })
+          .catch((e2) => setOwnersError(e2.message));
+      });
   }, []);
 
   async function loadStatement() {

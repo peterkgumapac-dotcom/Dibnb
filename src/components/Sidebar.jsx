@@ -60,12 +60,26 @@ export default function Sidebar({
           disabled={!owners.length}
         >
           <option value="">{owners.length ? '— choose —' : 'Loading…'}</option>
-          {owners.map((o) => (
-            <option key={o._id || o.id} value={o._id || o.id}>
-              {o.fullName || o.name || o.email || o._id}
-            </option>
-          ))}
+          {owners.map((o) => {
+            const id = o._id || o.id;
+            const name = o.fullName || o.name || o.email || id;
+            const list = o.listings || [];
+            const summary = list.length
+              ? `  —  ${list
+                  .slice(0, 3)
+                  .map((l) => l.nickname || l.title)
+                  .filter(Boolean)
+                  .join(', ')}${list.length > 3 ? ` +${list.length - 3} more` : ''}`
+              : '';
+            const countSuffix = list.length ? `  (${list.length})` : '';
+            return (
+              <option key={id} value={id}>
+                {name}{countSuffix}{summary}
+              </option>
+            );
+          })}
         </select>
+        {ownerId ? <OwnerListings owners={owners} ownerId={ownerId} /> : null}
         {ownersError ? (
           <div style={{ fontSize: 11, color: 'var(--lev-pink)' }}>{ownersError}</div>
         ) : null}
@@ -90,6 +104,21 @@ export default function Sidebar({
         </span>
       </div>
     </aside>
+  );
+}
+
+function OwnerListings({ owners, ownerId }) {
+  const owner = owners.find((o) => (o._id || o.id) === ownerId);
+  const list = owner?.listings || [];
+  if (!list.length) return null;
+  return (
+    <ul className="owner-listings">
+      {list.map((l) => (
+        <li key={l._id} title={l.title}>
+          {l.nickname || l.title}
+        </li>
+      ))}
+    </ul>
   );
 }
 

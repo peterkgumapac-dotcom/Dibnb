@@ -20,6 +20,7 @@ export const api = {
   health: () => getJson('/api/health'),
   owners: ({ limit = 100, skip = 0 } = {}) =>
     getJson(`/api/owners?limit=${limit}&skip=${skip}`),
+  ownersWithListings: () => getJson('/api/owners-with-listings'),
   listings: ({ ownerId } = {}) =>
     getJson(`/api/listings${ownerId ? `?ownerId=${encodeURIComponent(ownerId)}` : ''}`),
   reservations: ({ from, to, ownerId, listingId, limit = 100, skip = 0 }) => {
