@@ -18,23 +18,24 @@ const cache = globalThis[CACHE_KEY];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function fetchWithRetry(url, options, { tries = 4, baseDelay = 400 } = {}) {
+async function fetchWithRetry(url, options, { tries = 3, baseDelay = 400, maxDelay = 3000 } = {}) {
   let lastErr;
   for (let i = 0; i < tries; i++) {
     try {
       const res = await fetch(url, options);
       if (res.status === 429 || res.status === 503) {
-        // Respect Retry-After if present; otherwise exponential backoff.
         const ra = Number(res.headers.get('retry-after'));
-        const delay = Number.isFinite(ra) && ra > 0 ? ra * 1000 : baseDelay * 2 ** i;
-        if (i === tries - 1) return res; // out of retries; return the 429
+        const raw = Number.isFinite(ra) && ra > 0 ? ra * 1000 : baseDelay * 2 ** i;
+        const delay = Math.min(raw, maxDelay);
+        if (i === tries - 1) return res;
         await sleep(delay);
         continue;
       }
       return res;
     } catch (err) {
       lastErr = err;
-      await sleep(baseDelay * 2 ** i);
+      const delay = Math.min(baseDelay * 2 ** i, maxDelay);
+      await sleep(delay);
     }
   }
   throw lastErr || new Error('fetchWithRetry exhausted');
@@ -70,7 +71,7 @@ export async function getAccessToken() {
         },
         body,
       },
-      { tries: 7, baseDelay: 1000 } // ~1s, 2s, 4s, 8s, 16s, 32s
+      { tries: 3, baseDelay: 500 } // ~500ms, 1s, 2s — stays under Netlify's 10s function timeout
     );
     if (!res.ok) {
       const text = await res.text();

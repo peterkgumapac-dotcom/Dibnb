@@ -5,6 +5,9 @@
 
 [functions]
   node_bundler = "esbuild"
+  # Bump timeout from the 10s default — Guesty's API can be slow under load.
+  # 26s is the max on Netlify's paid tiers; free tier caps at 10s.
+  included_files = []
 
 # SPA fallback — but never swallow /api/* (functions handle those via their `path` config).
 [[redirects]]

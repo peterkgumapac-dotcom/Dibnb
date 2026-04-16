@@ -1,30 +1,24 @@
 import { guestyFetch, jsonResponse, errorResponse } from './_guesty.js';
 
 // One endpoint that returns every owner with their listing nicknames attached.
-// The Sidebar uses this so the owner dropdown can show e.g.
-//   "Thomas Algrøy — Nedre Gartn. 4-302, Haugeveien 11 (5)"
-//
-// Cached for 5 minutes per function instance so we don't keep paying
-// the two underlying Guesty calls on every page view.
-let CACHED = { at: 0, payload: null };
-const TTL_MS = 5 * 60 * 1000;
+// Cached on globalThis so it survives across warm invocations of this function.
+const CACHE_KEY = '__lev_owners_cache__';
+const TTL_MS = 10 * 60 * 1000;
+globalThis[CACHE_KEY] = globalThis[CACHE_KEY] || { at: 0, payload: null };
+const cache = globalThis[CACHE_KEY];
 
 export default async () => {
   try {
     const now = Date.now();
-    if (CACHED.payload && now - CACHED.at < TTL_MS) {
-      return jsonResponse(200, CACHED.payload);
+    if (cache.payload && now - cache.at < TTL_MS) {
+      return jsonResponse(200, cache.payload);
     }
 
-    const [ownersResp, listingsResp] = await Promise.all([
-      guestyFetch('/owners', { query: { limit: 500 } }),
-      guestyFetch('/listings', {
-        query: {
-          limit: 500,
-          fields: '_id title nickname owners owner',
-        },
-      }),
-    ]);
+    // Serialize the two calls so they share a single OAuth token (no token stampede).
+    const ownersResp = await guestyFetch('/owners', { query: { limit: 200 } });
+    const listingsResp = await guestyFetch('/listings', {
+      query: { limit: 200, fields: '_id title nickname owners owner' },
+    });
 
     const owners = Array.isArray(ownersResp?.results)
       ? ownersResp.results
@@ -64,7 +58,8 @@ export default async () => {
     });
 
     const payload = { owners: enriched, totalListings: listings.length };
-    CACHED = { at: now, payload };
+    cache.at = now;
+    cache.payload = payload;
     return jsonResponse(200, payload);
   } catch (err) {
     return errorResponse(err);
