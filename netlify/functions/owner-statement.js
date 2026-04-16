@@ -1,21 +1,19 @@
-import { guestyFetch, sendJson, handleError } from './_guesty.js';
+import { guestyFetch, jsonResponse, errorResponse } from './_guesty.js';
 
 // Aggregates everything needed to render an owner statement view for one owner+period.
-// Returns: { owner, listings, reservations, expenses, period }
-export default async function handler(req, res) {
+// Returns: { period, owner, listings, reservations, expenses }
+export default async (req) => {
   try {
-    const url = new URL(req.url, `http://${req.headers.host}`);
+    const url = new URL(req.url);
     const ownerId = url.searchParams.get('ownerId');
     const from = url.searchParams.get('from');
     const to = url.searchParams.get('to');
     if (!ownerId || !from || !to) {
-      return sendJson(res, 400, { error: 'ownerId, from, to are required' });
+      return jsonResponse(400, { error: 'ownerId, from, to are required' });
     }
 
-    // 1. Owner profile
     const owner = await guestyFetch(`/owners/${ownerId}`).catch(() => null);
 
-    // 2. Listings for that owner
     const listingsResp = await guestyFetch('/listings', {
       query: {
         'filters[owner]': ownerId,
@@ -29,7 +27,6 @@ export default async function handler(req, res) {
       ? listingsResp
       : [];
 
-    // 3. Reservations overlapping the period for those listings
     const listingIds = listings.map((l) => l._id || l.id).filter(Boolean);
     let reservations = [];
     if (listingIds.length) {
@@ -46,7 +43,6 @@ export default async function handler(req, res) {
       reservations = Array.isArray(resvResp?.results) ? resvResp.results : [];
     }
 
-    // 4. Expenses (best-effort — endpoint name varies; ignore failure)
     let expenses = [];
     try {
       const expResp = await guestyFetch('/expenses', {
@@ -62,7 +58,7 @@ export default async function handler(req, res) {
       expenses = [];
     }
 
-    sendJson(res, 200, {
+    return jsonResponse(200, {
       period: { from, to },
       owner,
       listings,
@@ -70,6 +66,8 @@ export default async function handler(req, res) {
       expenses,
     });
   } catch (err) {
-    handleError(res, err);
+    return errorResponse(err);
   }
-}
+};
+
+export const config = { path: '/api/owner-statement' };

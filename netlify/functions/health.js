@@ -1,15 +1,17 @@
-import { sendJson, handleError, getAccessToken } from './_guesty.js';
+import { getAccessToken, jsonResponse, errorResponse } from './_guesty.js';
 
-export default async function handler(req, res) {
+export default async () => {
   try {
     const token = await getAccessToken();
-    sendJson(res, 200, {
+    return jsonResponse(200, {
       ok: true,
       hasToken: Boolean(token),
       tokenPreview: token ? `${token.slice(0, 8)}…${token.slice(-4)}` : null,
       time: new Date().toISOString(),
     });
   } catch (err) {
-    handleError(res, err);
+    return errorResponse(err);
   }
-}
+};
+
+export const config = { path: '/api/health' };

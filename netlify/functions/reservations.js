@@ -1,11 +1,9 @@
-import { guestyFetch, sendJson, handleError } from './_guesty.js';
+import { guestyFetch, jsonResponse, errorResponse } from './_guesty.js';
 
-// Pulls reservations whose check-in OR check-out falls within the period.
-// Used by the dashboard as the source of truth for the owner statement view.
-export default async function handler(req, res) {
+export default async (req) => {
   try {
-    const url = new URL(req.url, `http://${req.headers.host}`);
-    const from = url.searchParams.get('from'); // YYYY-MM-DD
+    const url = new URL(req.url);
+    const from = url.searchParams.get('from');
     const to = url.searchParams.get('to');
     const ownerId = url.searchParams.get('ownerId');
     const listingId = url.searchParams.get('listingId');
@@ -13,7 +11,7 @@ export default async function handler(req, res) {
     const skip = url.searchParams.get('skip') || '0';
 
     if (!from || !to) {
-      return sendJson(res, 400, { error: 'from and to (YYYY-MM-DD) are required' });
+      return jsonResponse(400, { error: 'from and to (YYYY-MM-DD) are required' });
     }
 
     const fields = [
@@ -25,7 +23,6 @@ export default async function handler(req, res) {
       'integration createdAt cancelledAt',
     ].join(' ');
 
-    // Guesty supports filters[checkIn][$gte] etc. We pull anything overlapping the period.
     const query = {
       limit,
       skip,
@@ -37,8 +34,10 @@ export default async function handler(req, res) {
     if (ownerId) query['filters[owner]'] = ownerId;
 
     const data = await guestyFetch('/reservations', { query });
-    sendJson(res, 200, data);
+    return jsonResponse(200, data);
   } catch (err) {
-    handleError(res, err);
+    return errorResponse(err);
   }
-}
+};
+
+export const config = { path: '/api/reservations' };

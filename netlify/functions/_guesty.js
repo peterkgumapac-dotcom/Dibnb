@@ -1,4 +1,4 @@
-// Shared helpers for Guesty Open API serverless functions.
+// Shared helpers for Guesty Open API Netlify Functions.
 // Caches the OAuth token in module scope so warm invocations reuse it.
 
 const TOKEN_URL = process.env.GUESTY_TOKEN_URL || 'https://open-api.guesty.com/oauth2/token';
@@ -79,16 +79,19 @@ export async function guestyFetch(path, { query, method = 'GET', body } = {}) {
   return data;
 }
 
-export function sendJson(res, status, payload) {
-  res.statusCode = status;
-  res.setHeader('content-type', 'application/json; charset=utf-8');
-  res.setHeader('cache-control', 'no-store');
-  res.end(JSON.stringify(payload));
+export function jsonResponse(status, payload) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      'cache-control': 'no-store',
+    },
+  });
 }
 
-export function handleError(res, err) {
+export function errorResponse(err) {
   const status = err.status || 500;
-  sendJson(res, status, {
+  return jsonResponse(status, {
     error: err.message || 'Unknown error',
     detail: err.body || null,
   });

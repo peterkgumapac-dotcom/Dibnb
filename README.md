@@ -10,11 +10,11 @@ shows every reservation / line item, and annotates each row inline with findings
 
 ## Stack
 
-- **React 18** + **Vite** (`.jsx`) — fast SPA, deployable to Vercel.
-- **Vercel Serverless Functions** in `/api/*` — proxy Guesty's Open API so credentials
-  never reach the browser and CORS is sidestepped.
-- **Guesty Open API** with OAuth `client_credentials` flow. Token cached in module scope
-  per warm function instance.
+- **React 18** + **Vite** (`.jsx`) — fast SPA, deployable to Netlify.
+- **Netlify Functions** in `netlify/functions/*` (Web-standard handlers) — proxy
+  Guesty's Open API so credentials never reach the browser and CORS is sidestepped.
+- **Guesty Open API** with OAuth `client_credentials` flow. Token cached in module
+  scope per warm function instance.
 - **LEV Collection brand** — deep green `#04392b`, cream `#f6efdf`, pink accent
   `#f7c8d4`, Playfair Display for display copy, Inter for UI.
 
@@ -22,50 +22,60 @@ shows every reservation / line item, and annotates each row inline with findings
 
 ## How to view it
 
-### 1. Locally (recommended for dev)
+### 1. Locally
 
 ```bash
 npm install
 cp .env.example .env
 # edit .env and put your real GUESTY_CLIENT_SECRET in
-npm run dev          # Vite UI at http://localhost:3000
+npm i -g netlify-cli
+netlify dev
 ```
 
-Vite alone won't serve `/api/*`. Two options for the API in dev:
+`netlify dev` runs Vite **and** the Functions runtime together on
+**http://localhost:8888** — `/api/*` is routed straight to your functions
+(thanks to the redirect in `netlify.toml`).
 
-- **Easiest — Vercel CLI:** `npm i -g vercel` then `vercel dev` (serves both UI and
-  `/api/*` on `http://localhost:3000`).
-- **Manual:** run any small Node server that exposes `/api/health`, `/api/owners`,
-  `/api/listings`, `/api/reservations`, `/api/owner-statement` — the Vite proxy
-  forwards `/api` to `http://localhost:3001`.
+### 2. Deployed to Netlify
 
-Open http://localhost:3000 → pick an owner + month → **Load statement**.
+Either via the dashboard:
 
-### 2. Deployed to Vercel
+1. Push this repo to GitHub (already done on branch
+   `claude/lev-owner-dashboard-8ebhc`).
+2. In Netlify → **Add new site → Import from GitHub** → pick this repo.
+3. Build settings are already in `netlify.toml` (`npm run build` → `dist/`,
+   functions in `netlify/functions`).
+4. **Site configuration → Environment variables** → add:
+   - `GUESTY_CLIENT_ID` = `0oau4tffm8ZVsUtGo5d7`
+   - `GUESTY_CLIENT_SECRET` = your real secret
+5. Trigger a deploy. Netlify gives you a `https://<your-site>.netlify.app` URL.
+
+Or via CLI:
 
 ```bash
-npm i -g vercel
-vercel link        # link to a new or existing Vercel project
-vercel env add GUESTY_CLIENT_ID         # paste 0oau4tffm8ZVsUtGo5d7
-vercel env add GUESTY_CLIENT_SECRET     # paste the secret
-vercel --prod
+netlify login
+netlify init                                  # link / create the site
+netlify env:set GUESTY_CLIENT_ID 0oau4tffm8ZVsUtGo5d7
+netlify env:set GUESTY_CLIENT_SECRET '...'    # quote secrets with special chars
+netlify deploy --build --prod
 ```
-
-Vercel will print a URL like `https://lev-owner-dashboard.vercel.app` — open it in your
-browser.
 
 ### 3. Quick sanity check
 
-Hit `/api/health` in the browser — you should get
-`{ "ok": true, "hasToken": true, "tokenPreview": "eyJ…abcd" }`.
-If `hasToken` is false, your env vars aren't set.
+Open `/api/health` on your deployed URL (or `http://localhost:8888/api/health`).
+You should see `{ "ok": true, "hasToken": true, "tokenPreview": "eyJ…abcd" }`.
+If `hasToken: false`, the env vars aren't set on the site yet.
+
+Then in the UI: pick an owner + month from the left sidebar and press
+**Load statement**. Audit findings render as colour-coded badges on the rows
+they affect — hover any badge to see the rule.
 
 ---
 
 ## Project layout
 
 ```
-api/
+netlify/functions/
   _guesty.js            shared OAuth + fetch helpers (token cache)
   health.js             GET /api/health
   owners.js             GET /api/owners
@@ -86,8 +96,8 @@ src/
   lib/
     api.js              frontend HTTP client
     format.js           currency / date helpers
-vercel.json             routing + function config
-vite.config.js          dev server + /api proxy
+netlify.toml            build + functions + redirects + dev config
+vite.config.js          dev server config
 ```
 
 ---
