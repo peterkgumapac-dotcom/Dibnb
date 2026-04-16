@@ -345,6 +345,18 @@ button.disclosure:hover { background: var(--lev-green-50); }
 }
 .owner-listings li:last-child { border-bottom: none; }
 
+.field-error {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: rgba(247, 200, 212, 0.10);
+  border: 1px solid rgba(247, 200, 212, 0.35);
+  border-radius: 6px;
+  color: var(--lev-pink);
+  font-size: 12px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.btn-retry { align-self: flex-start; padding: 5px 10px; font-size: 12px; }
+
 .listings-chips {
   display: flex; flex-wrap: wrap; gap: 6px;
 }

@@ -11,6 +11,8 @@ export default function Sidebar({
   loading,
   health,
   ownersError,
+  ownersLoading,
+  onRetryOwners,
 }) {
   const presets = [
     { key: 'thisMonth', label: 'This month', value: currentMonthYYYYMM() },
@@ -59,7 +61,15 @@ export default function Sidebar({
           onChange={(e) => setOwnerId(e.target.value)}
           disabled={!owners.length}
         >
-          <option value="">{owners.length ? '— choose —' : 'Loading…'}</option>
+          <option value="">
+            {ownersLoading
+              ? 'Loading owners…'
+              : ownersError
+              ? 'Failed to load'
+              : owners.length
+              ? '— choose —'
+              : 'No owners found'}
+          </option>
           {owners.map((o) => {
             const id = o._id || o.id;
             const name = o.fullName || o.name || o.email || id;
@@ -79,7 +89,15 @@ export default function Sidebar({
             );
           })}
         </select>
-        {ownerId ? <OwnerListings owners={owners} ownerId={ownerId} /> : null}
+        {ownersError && (
+          <div className="field-error">
+            <div>⚠ {ownersError}</div>
+            <button className="btn-ghost btn-retry" onClick={onRetryOwners}>
+              Retry
+            </button>
+          </div>
+        )}
+        {ownerId && !ownersError ? <OwnerListings owners={owners} ownerId={ownerId} /> : null}
         {ownersError ? (
           <div style={{ fontSize: 11, color: 'var(--lev-pink)' }}>{ownersError}</div>
         ) : null}

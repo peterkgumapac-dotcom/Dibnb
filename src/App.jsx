@@ -7,6 +7,7 @@ import { currentMonthYYYYMM, monthRange } from './lib/format.js';
 export default function App() {
   const [owners, setOwners] = useState([]);
   const [ownersError, setOwnersError] = useState(null);
+  const [ownersLoading, setOwnersLoading] = useState(true);
   const [ownerId, setOwnerId] = useState('');
   const [period, setPeriod] = useState(currentMonthYYYYMM());
   const [loading, setLoading] = useState(false);
@@ -14,19 +15,18 @@ export default function App() {
   const [statement, setStatement] = useState(null);
   const [health, setHealth] = useState(null);
 
-  useEffect(() => {
-    api
-      .health()
-      .then((h) => setHealth(h))
-      .catch((e) => setHealth({ ok: false, error: e.message }));
-
+  const loadOwners = () => {
+    setOwnersLoading(true);
+    setOwnersError(null);
     api
       .ownersWithListings()
-      .then((res) => setOwners(res.owners || []))
+      .then((res) => {
+        setOwners(res.owners || []);
+        setHealth({ ok: true }); // successful API call proves Guesty is reachable
+      })
       .catch((e) => {
-        // Fallback to the bare /owners list if the combined endpoint is unreachable.
-        setOwnersError(e.message);
-        api
+        // Fallback to bare /owners if the combined endpoint fails
+        return api
           .owners({ limit: 200 })
           .then((res) => {
             const list = Array.isArray(res?.results)
@@ -35,10 +35,22 @@ export default function App() {
               ? res
               : [];
             setOwners(list);
-            setOwnersError(null);
+            setHealth({ ok: true });
           })
-          .catch((e2) => setOwnersError(e2.message));
-      });
+          .catch((e2) => {
+            setOwnersError(e2.message || e.message);
+            setHealth({ ok: false, error: e2.message });
+          });
+      })
+      .finally(() => setOwnersLoading(false));
+  };
+
+  useEffect(() => {
+    // Single call on mount — no separate /api/health ping, since the
+    // owners fetch itself already proves whether Guesty is reachable
+    // (and avoids a duplicate token request that trips Guesty's 429 limit).
+    loadOwners();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function loadStatement() {
@@ -69,6 +81,8 @@ export default function App() {
         loading={loading}
         health={health}
         ownersError={ownersError}
+        ownersLoading={ownersLoading}
+        onRetryOwners={loadOwners}
       />
 
       <main className="main">

@@ -70,7 +70,7 @@ export async function getAccessToken() {
         },
         body,
       },
-      { tries: 5, baseDelay: 600 }
+      { tries: 7, baseDelay: 1000 } // ~1s, 2s, 4s, 8s, 16s, 32s
     );
     if (!res.ok) {
       const text = await res.text();
